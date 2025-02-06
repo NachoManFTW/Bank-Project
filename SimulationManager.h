@@ -122,7 +122,7 @@ void SimulationManager::runSimulation() {
         cout << "\nPress SPACE to continue...";
         while (_getch() != ' ') {}
 
-        // Add new customers to the queue with a 5% chance
+        // Add new customers to the queue with a x% chance
         addNewCustomer(currentHour, currentMinute);
 
         // Update teller timers and customer waiting times
@@ -191,7 +191,7 @@ void SimulationManager::printCustomerQueue(const queue<Customer>& customerQueue)
     }
 }
 
-// % chance to add customer for x amount of customers to queue
+// x% chance to add customer for x amount of customers to queue
 void SimulationManager::addNewCustomer(int currentHour, int currentMinute) {
     if (rand() % 100 < 20 && currentHour < 13) {
         Customer newCustomer(customers.size(), currentHour, currentMinute);
