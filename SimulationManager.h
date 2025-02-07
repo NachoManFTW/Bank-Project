@@ -24,7 +24,7 @@ private:
     void runSimulation();
     void manageTellers(int& tellersAvailable, queue<Customer>& customerQueue);
     void printTellerStatus(int tellersAvailable, const vector<int>& tellerTimers, const vector<string>& tellerCurrentCustomer);
-    void printCustomerQueue(const queue<Customer>& customerQueue);
+    void printCustomerQueue(queue<Customer>& customerQueue);
     void addNewCustomer(int currentHour, int currentMinute);
     void updateTellerTimers(int tellersAvailable, vector<int>& tellerTimers, vector<string>& tellerCurrentCustomer, int currentHour, int currentMinute, vector<int>& tellerStartTime);
     void printStatistics(int totalQueueSize, int timeSteps);
@@ -79,22 +79,6 @@ void SimulationManager::runSimulation() {
         system("cls");
         cout << "Current Time: " << BankUtilities::formatTime(currentHour, currentMinute) << "\n\n";
         
-       
-        // Increment waiting time for all customers still in the queue
-        queue<Customer> tempQueue = move(customerQueue);
-        queue<Customer> newQueue;
-        while (!tempQueue.empty()) {
-            Customer modifiedCustomer = tempQueue.front();
-            tempQueue.pop();
-
-            modifiedCustomer.waitingTime++;  // Increment the waiting time for each customer in the queue
-            newQueue.push(modifiedCustomer);
-
-            cout << modifiedCustomer.waitingTime << endl;
-        }
-         
-        customerQueue = move(newQueue);
-
         int totalCustomersInQueue = customerQueue.size();
         // Track queue size at each minute
         totalQueueSize += totalCustomersInQueue;  // Add current queue size to total
@@ -176,19 +160,24 @@ void SimulationManager::printTellerStatus(int tellersAvailable, const vector<int
 }
 
 // Print customer queue to console
-void SimulationManager::printCustomerQueue(const queue<Customer>& customerQueue) {
+void SimulationManager::printCustomerQueue(queue<Customer>& customerQueue) {
     cout << "\nCustomers in Queue:\n";
     if (customerQueue.empty()) {
         cout << "No customers waiting.\n";
     }
-    else {
-        queue<Customer> tempQueue = customerQueue;
-        while (!tempQueue.empty()) {
-            tempQueue.front().waitingTime++;
-            cout << "- " << tempQueue.front().lastName << " (" << tempQueue.front().transactionType << ")\n";
-            tempQueue.pop();
+
+    queue<Customer> tempQueue;
+    while (!customerQueue.empty()) {
+        Customer modifiedCustomer = customerQueue.front();
+        customerQueue.pop();
+        modifiedCustomer.waitingTime++;  // Increment waiting time
+        cout << "- " << modifiedCustomer.lastName << " ("
+             << modifiedCustomer.transactionType << ") "
+             << "Waiting Time: " << modifiedCustomer.waitingTime << " min\n";
+        tempQueue.push(modifiedCustomer); // Push back updated customer
         }
-    }
+    
+    customerQueue = tempQueue;
 }
 
 // X% chance to add customer into queue
@@ -221,12 +210,7 @@ void SimulationManager::printStatistics(int totalQueueSize, int timeSteps) {
         cout << "\nNo customers to analyze.\n";
         return;
     }
-    // Debug: Print out waiting times and arrival times
-    for (const auto& customer : customers) {
-        cout << "Customer " << customer.lastName
-            << " arrived at " << customer.arrivalTime
-            << " and has waited for " << customer.waitingTime << " minutes.\n";
-    }
+
     // === Sort and Display Reports ===
 
     // Sort by last name (alphabetical order)
@@ -248,15 +232,32 @@ void SimulationManager::printStatistics(int totalQueueSize, int timeSteps) {
     printCustomerReport("Sorted by Arrival Time", customers);
 
 
-    // Calculate the average waiting time per customer
-    double totalWaitingTime = 0;
 
-    for (const auto& customer : customers) {
-        totalWaitingTime += customer.waitingTime;
+    // Ensure queue waiting times are reflected in customers vector 
+    queue<Customer> tempQueue = customerQueue;  // Copy the queue
 
+    while (!tempQueue.empty()) {
+        Customer queuedCustomer = tempQueue.front();
+        tempQueue.pop();
+
+        // Find the matching customer in the vector based on last name & arrival time
+        for (auto& storedCustomer : customers) {
+            if (storedCustomer.lastName == queuedCustomer.lastName) {
+                storedCustomer.waitingTime = queuedCustomer.waitingTime;
+                break;
+            }
+        }
     }
 
+    // Calculate Average Waiting Time
+    double totalWaitingTime = 0;
+    for (const auto& customer : customers) {
+        totalWaitingTime += customer.waitingTime;
+    }
     double averageWaitingTime = totalWaitingTime / customers.size();
+
+
+
 
     // Calculate average queue size over time (totalQueueSize / timeSteps)
     double averageQueueSize = totalQueueSize / timeSteps;
@@ -274,7 +275,7 @@ void SimulationManager::printStatistics(int totalQueueSize, int timeSteps) {
 }
 
 
-//
+
 void SimulationManager::printCustomerReport(const string& title, const vector<Customer>& customers) {
     cout << "\n"; // Add extra newline for spacing
     cout << "======================================\n"; // Report Header
