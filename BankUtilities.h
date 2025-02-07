@@ -24,7 +24,7 @@ int BankUtilities::randomInt(int min, int max) {
     return min + (rand() % (max - min + 1));
 }
 
-// Function to read last0names.txt and import all names into vector for selection
+// Function to read last-names.txt and import all names into vector for selection
 string BankUtilities::randomLastName() {
     static vector<string> lastNames;
     if (lastNames.empty()) {

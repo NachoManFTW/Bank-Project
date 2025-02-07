@@ -15,6 +15,8 @@ public:
     int waitingTime = 0;
     int startTime;
 
+
+    // Default constructor
     Customer(int currentCustomerIndex, int currentHour, int currentMinute);
 };
 

@@ -15,15 +15,12 @@
 
 using namespace std;
 
-class Customer;
-
 class SimulationManager {
 public:
     SimulationManager();
     void startSimulation();
 
 private:
-    int getCustomerInput();
     void runSimulation();
     void manageTellers(int& tellersAvailable, queue<Customer>& customerQueue);
     void printTellerStatus(int tellersAvailable, const vector<int>& tellerTimers, const vector<string>& tellerCurrentCustomer);
@@ -37,6 +34,9 @@ private:
     int numCustomers;
     vector<Customer> customers;
     queue<Customer> customerQueue;
+    // Percent chance of a customer coming in every minute 
+    const int chance = 25;
+    //int waitingTime;
 };
 
 //********************
@@ -50,7 +50,7 @@ void SimulationManager::startSimulation() {
     char exitInput;
     do {
         system("cls");
-        numCustomers = getCustomerInput();
+        numCustomers = 0;
         system("cls");
         runSimulation();
         cout << "Would you like to do another simulation (Y/N): ";
@@ -58,10 +58,6 @@ void SimulationManager::startSimulation() {
     } while (toupper(exitInput) != 'N');
 }
 
-//
-int SimulationManager::getCustomerInput() {
-    return BankUtilities::randomInt(1, 5);
-}
 
 void SimulationManager::runSimulation() {
     customers.clear();
@@ -74,30 +70,34 @@ void SimulationManager::runSimulation() {
     vector<string> tellerCurrentCustomer(3, "");
     vector<int> tellerStartTime(3, 0);
 
-    // Add customers to the queue initially
-    for (int i = 0; i < numCustomers; i++) {
-        customers.emplace_back(i, currentHour, currentMinute);  // Pass current time to the constructor
-        customerQueue.push(customers.back());
-    }
-
     cout << "Simulation started. Press SPACE to advance time by 1 minute.\n\n";
 
     int totalQueueSize = 0;  // To accumulate total queue size
     int timeSteps = 0;       // To track the total number of time steps
 
-    while (currentHour < closingHour || !customerQueue.empty() || any_of(tellerTimers.begin(), tellerTimers.end(), [](int t) { return t > 0; })) {
+    while (currentHour < closingHour ) {
         system("cls");
         cout << "Current Time: " << BankUtilities::formatTime(currentHour, currentMinute) << "\n\n";
-
+        
+       
         // Increment waiting time for all customers still in the queue
-        queue<Customer> tempQueue = customerQueue;
+        queue<Customer> tempQueue = move(customerQueue);
+        queue<Customer> newQueue;
         while (!tempQueue.empty()) {
-            tempQueue.front().waitingTime++;  // Increment the waiting time for each customer in the queue
+            Customer modifiedCustomer = tempQueue.front();
             tempQueue.pop();
-        }
 
+            modifiedCustomer.waitingTime++;  // Increment the waiting time for each customer in the queue
+            newQueue.push(modifiedCustomer);
+
+            cout << modifiedCustomer.waitingTime << endl;
+        }
+         
+        customerQueue = move(newQueue);
+
+        int totalCustomersInQueue = customerQueue.size();
         // Track queue size at each minute
-        totalQueueSize += customerQueue.size();  // Add current queue size to total
+        totalQueueSize += totalCustomersInQueue;  // Add current queue size to total
         timeSteps++;  // Increment the number of time steps
 
         // Manage teller availability based on the queue size
@@ -122,7 +122,7 @@ void SimulationManager::runSimulation() {
         cout << "\nPress SPACE to continue...";
         while (_getch() != ' ') {}
 
-        // Add new customers to the queue with a x% chance
+        // Add new customers to the queue with a X% chance
         addNewCustomer(currentHour, currentMinute);
 
         // Update teller timers and customer waiting times
@@ -191,15 +191,15 @@ void SimulationManager::printCustomerQueue(const queue<Customer>& customerQueue)
     }
 }
 
-// x% chance to add customer for x amount of customers to queue
-void SimulationManager::addNewCustomer(int currentHour, int currentMinute) {
-    if (rand() % 100 < 20 && currentHour < 13) {
+// X% chance to add customer into queue
+    void SimulationManager::addNewCustomer(int currentHour, int currentMinute) {
+    if (rand() % 100 < chance && currentHour < 13) {
         Customer newCustomer(customers.size(), currentHour, currentMinute);
 
         customers.push_back(newCustomer);
         customerQueue.push(newCustomer); 
-        cout << "\nNew customer arrived: " << newCustomer.lastName << " (" << newCustomer.transactionType << ")\n";
-        Sleep(500);
+        cout << "\nNew customer arrived: " << newCustomer.lastName << " " << newCustomer.arrivalTime << " (" << newCustomer.transactionType << ")\n";
+        //Sleep(2000);
     }
 }
 
@@ -249,13 +249,17 @@ void SimulationManager::printStatistics(int totalQueueSize, int timeSteps) {
 
 
     // Calculate the average waiting time per customer
-    double totalWaitingTime = accumulate(customers.begin(), customers.end(), 0.0, [](double sum, const Customer& c) {
-        return sum + c.waitingTime;  // Sum all customers' waiting times
-        });
-    double averageWaitingTime = (customers.size() > 0) ? totalWaitingTime / customers.size() : 0;
+    double totalWaitingTime = 0;
+
+    for (const auto& customer : customers) {
+        totalWaitingTime += customer.waitingTime;
+
+    }
+
+    double averageWaitingTime = totalWaitingTime / customers.size();
 
     // Calculate average queue size over time (totalQueueSize / timeSteps)
-    double averageQueueSize = (timeSteps > 0) ? static_cast<double>(totalQueueSize) / timeSteps : 0;
+    double averageQueueSize = totalQueueSize / timeSteps;
 
     // === Print the Results ===
     cout << "\n";
