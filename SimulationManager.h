@@ -181,7 +181,7 @@ void SimulationManager::printCustomerQueue(queue<Customer>& customerQueue) {
 }
 
 // X% chance to add customer into queue
-    void SimulationManager::addNewCustomer(int currentHour, int currentMinute) {
+void SimulationManager::addNewCustomer(int currentHour, int currentMinute) {
     if (rand() % 100 < chance && currentHour < 13) {
         Customer newCustomer(customers.size(), currentHour, currentMinute);
 
